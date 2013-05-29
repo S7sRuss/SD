@@ -1,0 +1,38 @@
+type token =
+  | EOL
+  | INT of (int)
+  | STRING of (string)
+  | NAME of (string)
+  | DECL
+  | IN
+  | FUN
+  | CALL
+  | IF
+  | THEN
+  | ELSE
+  | WHILE
+  | SKIP
+  | SEQ
+  | DEREF
+  | VAR
+  | FREE
+  | ASSIGN
+  | EQUAL
+  | NOT
+  | PLUS
+  | MINUS
+  | MULT
+  | DIV
+  | LPAR
+  | RPAR
+  | TYPEOF
+  | CLPAR
+  | CRPAR
+  | UNITTYPE
+  | INTTYPE
+  | BOOLTYPE
+  | NONETYPE
+  | REFTYPE
+
+val main :
+  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Syntax.calcst

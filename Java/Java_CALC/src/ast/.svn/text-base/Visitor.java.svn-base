@@ -1,0 +1,8 @@
+package ast;
+
+
+public interface Visitor<T,C> {
+	T visit(ASTNum number, C o);
+	T visit(ASTAdd plus, C o);
+	T visit(ASTMul mult, C o);
+}

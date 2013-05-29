@@ -1,0 +1,6 @@
+let memlen = ref(0);;
+let memsize = ref(2);;
+
+let mem : (int,string) Hashtbl.t  = Hashtbl.create 10;;
+
+Hashtbl.

@@ -1,0 +1,183 @@
+
+*********							******************************************************************************************************************************
+*********			CALC			******************************************************************************************************************************
+*********							******************************************************************************************************************************
+
+num: Integer -> CALC
+add: CALC * CALC -> CALC
+mult: CALC * CALC -> CALC
+div: CALC * CALC -> CALC
+sub: CALC * CALC -> CALC
+
+eval : CALC -> Integer
+
+let rec eval e = match e with
+	  Num(n) -> n
+	| Add(E,E') -> eval(E)+eval(E')
+	| Mul(E,E') -> eval(E)*eval(E')
+	| Div(E,E') -> v = eval(E') in if v==0 error else eval(E)/v
+	| Sub(E,E') -> eval(E) - eval(E')
+
+comp : CALC -> CodeSequence
+
+let rec comp e = match e with
+	  Num(n) -> ["ldc.i4 "^(string_of_int n)]
+	| Add(e1,e2) -> (comp e1)@(comp e2)@["add"]
+	| Mul(e1,e2) -> (comp e1)@(comp e2)@["mul"]
+	| Sub(e1,e2) -> (comp e1)@(comp e2)@["sub"]
+	| Div(e1,e2) -> (comp e1)@(comp e2)@["div"]
+
+
+*********							******************************************************************************************************************************
+*********			CALCI			******************************************************************************************************************************
+*********							******************************************************************************************************************************
+*********	(usando substituições)	******************************************************************************************************************************
+
+Num: Integer -> CALCI
+Add: CALCI * CALCI -> CALCI
+Mult: CALCI * CALCI -> CALCI
+Div: CALCI * CALCI -> CALCI
+Sub: CALCI * CALCI -> CALCI
+Id: String -> CALCI
+Decl: String * CALCI * CALCI -> CALCI
+
+(* expressão que resulta de substituir todas as ocorrências livres do identificador s pela expressão f na expressão e *)
+let rec subst s e f = 
+	match e with
+	Num(n) -> Num(n)
+	| Add(E,E') -> Add(subst(s,E,f),subst(s,E',f))
+	| Mul(E,E') -> Mul(subst(s,E,f),subst(s,E',f))
+	| Div(E,E') -> Div(subst(s,E,f),subst(s,E',f))
+	| Sub(E,E') -> Sub(subst(s,E,f),subst(s,E',f))
+	| Id(E) -> if E==s then f else Id(E)
+	| Decl(E,E',E'') -> if E==s then Decl(s,subst(s,E',f),E'') else Decl(E,subst(s,E',f),subst(s,E'',f))
+
+
+(* Não é preciso programar o Id porque ele será sempre substituido pela correspondente expressão com o subst *)
+let rec eval e = match e with
+	  Num(n) -> n
+	| Add(e1,e2) -> eval(E)+eval(e2)
+	| Mul(e1,e2) -> eval(E)*eval(e2)
+	| Div(e1,e2) -> v = eval(e2) in if v==0 error else eval(E)/v
+	| Sub(e1,e2) -> eval(e1) - eval(e2)
+	| Decl(e,e',e'') -> 
+		let v = eval(e') in 
+			let expr = subst(e,v,e'') in
+				eval(expr)
+
+
+let rec comp e = match e with
+	  Num(n) -> ["ldc.i4 "^(string_of_int n)]
+	| Add(e1,e2) -> (comp e1)@(comp e2)@["add"]
+	| Mul(e1,e2) -> (comp e1)@(comp e2)@["mul"]
+	| Sub(e1,e2) -> (comp e1)@(comp e2)@["sub"]
+	| Div(e1,e2) -> (comp e1)@(comp e2)@["div"]
+	| Decl(e1,e2,e3) ->
+
+
+
+*********							******************************************************************************************************************************
+*********			CALCI v2		******************************************************************************************************************************
+*********	(Usando ambientes)		******************************************************************************************************************************
+*********							******************************************************************************************************************************
+
+Num: Integer -> CALCI
+Add: CALCI * CALCI -> CALCI
+Mult: CALCI * CALCI -> CALCI
+Div: CALCI * CALCI -> CALCI
+Sub: CALCI * CALCI -> CALCI
+Id: String -> CALCI
+Decl: String * CALCI * CALCI -> CALCI
+
+
+Environ (Ambiente)
+	void assoc(String id,Value value)
+	Value find(String id)
+	Environ beginScope() - cria um novo nível onde serão colocadas novas ligações. 
+	Environ endScope() - coloca-se no nível anterior, apagando o actual
+
+eval: CALCI x ENV -> Integer
+
+let rec eval e env = match e with
+	  Num(n) -> n
+	| Add(e1,e2) -> eval(e1, env)+eval(e2, env)
+	| Mul(e1,e2) -> eval(e1, env)*eval(e2, env)
+	| Div(e1,e2) -> v = eval(e2, env) in if v==0 error else eval(e1,env)/v
+	| Sub(e1,e2) -> eval(e1,env) - eval(e2,env)
+	| Id(s) -> 
+		let v = env.find s in
+			match v with
+			[] -> Id(s)
+			| [v1] -> v1
+	| Decl(s,e2,e3) -> 
+		let v = eval(e2, env) in 
+			let env1 = env.beginScope in
+				env1.assoc(s,v) ;
+				let v2 = eval(e3,env1) in
+				env.endScope ; 
+				v2
+
+
+(* Ver a partir da página 49 em icl-slides.pdf*)
+let rec comp e = match e with
+	  Num(n) -> ["ldc.i4 "^(string_of_int n)]
+	| Add(e1,e2) -> (comp e1)@(comp e2)@["add"]
+	| Mul(e1,e2) -> (comp e1)@(comp e2)@["mul"]
+	| Sub(e1,e2) -> (comp e1)@(comp e2)@["sub"]
+	| Div(e1,e2) -> (comp e1)@(comp e2)@["div"]
+	| Id(s) -> 
+	| Decl(e,e',e'') ->
+
+
+
+*********							******************************************************************************************************************************
+*********			CALCF			******************************************************************************************************************************
+*********		com subst			******************************************************************************************************************************
+
+
+Num: Integer -> CALCF
+Add: CALCF * CALCF -> CALCF
+Mult: CALCF * CALCF -> CALCF
+Div: CALCF * CALCF -> CALCF
+Sub: CALCF * CALCF -> CALCF
+Id: String -> CALCF
+Decl: String * CALCF * CALCF -> CALCF
+Fun: String * CALCF -> CALCF
+Call: CALCF * CALCF -> CALCF
+
+
+Result
+	Num: Integer -> Result
+	Abstraction: String * CALCF -> Result
+	Error: void -> Result
+
+let rec subst s e f =
+	match e with
+	  Num(n) -> Num(n)
+	| Add(e1,e2) -> Add(subst(s,e1,f),subst(s,e2,f))
+	| Mul(e1,e2) -> Mul(subst(s,e1,f),subst(s,e2,f))
+	| Div(e1,e2) -> Div(subst(s,e1,f),subst(s,e2,f))
+	| Sub(e1,e2) -> Sub(subst(s,e1,f),subst(s,e2,f))
+	| Id(t) ->	if s==t then f else Id(t)
+	| Decl(t,e2,e3) -> (* ver página 24... mas não concordo *) 
+	| Fun(t,e2) -> if s==t then subst(s,e2,f) else Fun(t,e2) 
+	| Call(e1,e2) -> 
+
+let rec eval e = 
+	match e with
+		  Num(n) -> n
+		| Add(e1,e2) -> eval(e1, env)+eval(e2, env)
+		| Mul(e1,e2) -> eval(e1, env)*eval(e2, env)
+		| Div(e1,e2) -> v = eval(e2, env) in if v==0 error else eval(e1,env)/v
+		| Sub(e1,e2) -> eval(e1,env) - eval(e2,env)
+		| Decl(s,e2,e3) -> eval(subst(s,e2,eval(e1))
+		| Fun(s,e2) -> Abstraction(s,eval(e2))
+		| Call(e1,e2) ->
+			let f = eval(e1) in
+				match f with
+				Abstraction(s,e3) -> let v = eval(e2) in eval(subst(s,e3,v))
+				| _ -> error
+
+
+let rec comp e =
+	...

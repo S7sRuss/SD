@@ -1,0 +1,10 @@
+let a = [1;2;3;4];;
+
+
+
+
+let main () =
+  print_list (List.map (function i->i+1) a)
+;;
+
+main();;

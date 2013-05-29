@@ -1,0 +1,9 @@
+let a = [1;2;3;4];;
+
+
+
+let main () =
+  let lexbuf = Lexing.from_channel (stdin) in (List.map (function i->i+1) a) lexbuf 
+;;
+
+main();;

@@ -1,0 +1,2 @@
+ :load CalcControlComp
+ printComp (Decl "x" (Var (Num 0) None) (Seq (While (Not (Equal (Deref (Id "x" None) None) (Num 10))) (Assign (Id "x" None) (Add (Deref (Id "x" None) None) (Num 1)) None)) (Deref (Id "x" None) None)) None)

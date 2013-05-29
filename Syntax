@@ -1,0 +1,124 @@
+
+main : <PROGRAM> <ID> <SEMICOLON> decl_block begin_end_block <DOT> 
+
+decl_block : const_block var_block decl_list 
+	
+var_block : [<VAR> decl_id_list] 
+
+const_block : [<CONST> decl_cid_list] 
+
+decl_id_list : decl_id <SEMICOLON> ( decl_id <SEMICOLON> )* 
+
+decl_id : id_list <COLON> type_decl 
+	
+id_list : <ID> ( <COMMA> <ID> )* 
+
+decl_cid_list : cid <SEMICOLON> (cid <SEMICOLON> )* 
+	
+cid :	<ID> <EQUAL> expr 
+
+decl_list : [ fp = decl <SEMICOLON> ( fp = decl <SEMICOLON> )* ]
+
+decl : fun_decl | proc_decl 
+
+fun_decl : <FUNCTION> <ID> <LPAR> param_list <RPAR> <COLON> type_decl decl_block begin_end_block 
+
+proc_decl :	<PROCEDURE> <ID> <LPAR> param_list <RPAR> decl_block begin_end_block 
+
+param_list : [ param ( <COMMA> param )* ] 
+
+param : <ID> <COLON> type_decl 
+
+begin_end_block :	<BEGIN> stmt_seq <END> 
+
+stmt_seq : stmt ( <SEMICOLON> stmt )* 
+
+opt_begin_end_block :	begin_end_block | stmt 
+
+stmt :
+ access (
+		<ASSIGN> expr |
+		<LPAR> expr_list_or_empty <RPAR> ) 
+| <WHILE> expr <DO> opt_begin_end_block 
+| <IF> expr <THEN> opt_begin_end_block [LOOKAHEAD(2) <ELSE> opt_begin_end_block]
+| <WRITE> <LPAR> expr_list <RPAR> 
+| <WRITELN> <LPAR> expr_list_or_empty <RPAR> 
+| <RESULT> <ASSIGN> expr 
+| <READ> <LPAR> id_list <RPAR> 
+| <READLN> <LPAR> id_list <RPAR> 
+	[ expr_list] 
+
+
+expr_list : expr (<COMMA> expr )* 
+
+or_logic : and_logic {} (<OR> and_logic )* 
+
+and_logic : compare ( <AND> compare )* 
+
+compare :
+	arith (
+		<EQUAL> arith |
+	<GT> arith |
+	<LT> arith |
+	<GTEQ> arith |
+	<LTEQ> arith )* 
+
+arith :
+	term (
+		<PLUS> term |
+	<MINUS> term )* (
+		<MULT> un_op |
+	<DIV> un_op |
+	<MOD> un_op )* 
+
+un_op :
+	call 
+| <NOT> call 
+| <MINUS> call 
+
+call : access (<LPAR> expr_list_or_empty <RPAR> )* 
+
+access :
+	factor(
+	<DOT> <ID> |
+	<LSBRA> expr <RSBRA> )* 
+
+factor :
+	t = <NUM> 
+| <STRING_CONST> 
+| <ID> 
+| <LPAR> expr <RPAR> 
+| <TRUE> 
+| <FALSE> 
+| <LSBRA> list = expr_list_or_empty <RSBRA> 
+| <LCBRA> list = rec_decl_id_list <RCBRA> {} 
+
+
+rec_decl_id_list : rec_decl_id(<COMMA> rec_decl_id )* 
+
+
+rec_decl_id : <ID> <EQUAL> expr 
+	
+
+type_decl_list : [type_decl (<COMMA> type_decl )*] 
+
+type_decl :
+	<INTEGER> 
+| <STRING> 
+| <BOOL> 
+| func_type 
+| proc_type 
+| array_type 
+| rec_type 
+
+func_type : <FUN> <LPAR> type_decl_list <RPAR> <COLON> type_decl 
+
+proc_type : <PROC> <LPAR> type_decl_list <RPAR> 
+
+array_type : <ARRAY> <LPAR> <NUM> <COMMA> type_decl <RPAR> 
+
+rec_type : <REC> <LPAR> rec_type_decl_id_list <RPAR> 
+
+rec_type_decl_id_list : rec_type_decl_id ( <COMMA> rec_type_decl_id )* 
+
+rec_type_decl_id : <ID> <COLON> type_decl 

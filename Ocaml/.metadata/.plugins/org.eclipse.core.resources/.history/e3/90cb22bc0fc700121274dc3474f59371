@@ -1,0 +1,5 @@
+let memlen = ref(0);;
+let memsize = ref(2);;
+
+
+let substrs s = String.sub s 0 ((String.length s)-2)

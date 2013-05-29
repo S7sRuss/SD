@@ -1,0 +1,15 @@
+DontShowMissingPathsWarning=true
+OcamlbuildPathsOverride=true
+camlp4PathPreference=C\:/cygwin/usr/local/bin/camlp4.exe
+compilPathLibPreference=C\:/cygwin/usr/local/lib/ocaml
+eclipse.preferences.version=1
+makePathPreference=C\:/cygwin/bin/make.exe
+ocamlPathPreference=C\:/cygwin/usr/local/bin/ocaml.exe
+ocamlbuildPathPreference=C\:/cygwin/usr/local/bin/ocamlbuild.exe
+ocamlcPathPreference=C\:/cygwin/usr/local/bin/ocamlc.exe
+ocamldebugPathPreference=C\:/cygwin/usr/local/bin/ocamldebug.exe
+ocamldepPathPreference=C\:/cygwin/usr/local/bin/ocamldep.exe
+ocamldocPathPreference=C\:/cygwin/usr/local/bin/ocamldoc.exe
+ocamllexPathPreference=C\:/cygwin/usr/local/bin/ocamllex.exe
+ocamloptPathPreference=C\:/cygwin/usr/local/bin/ocamlopt.exe
+ocamlyaccPathPreference=C\:/cygwin/usr/local/bin/ocamlyacc.exe

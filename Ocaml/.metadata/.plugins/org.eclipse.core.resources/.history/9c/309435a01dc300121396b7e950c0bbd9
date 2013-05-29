@@ -1,0 +1,13 @@
+let a = [1;2;3;4];;
+
+
+let rec string_of_int_list l = match l with
+	| [] -> "";
+	| a::t -> (string_of_int a)^(string_of_int_list t);;
+
+
+let main () =
+  print_list (List.map (function i->i+1) a)
+;;
+
+main();;

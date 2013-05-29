@@ -1,0 +1,818 @@
+
+
+(******************************************************************
+
+	José Filipe Sá Pinto Torres
+	jftorres29@gmail.com
+
+	LEI - FCT/UNL - Maio 2013
+
+
+*******************************************************************)
+
+(*******************************************************************
+
+     #####                                            
+    #     # #####    ##   #    # #    #   ##   #####  
+    #       #    #  #  #  ##  ## ##  ##  #  #  #    # 
+    #  #### #    # #    # # ## # # ## # #    # #    # 
+    #     # #####  ###### #    # #    # ###### #####  
+    #     # #   #  #    # #    # #    # #    # #   #  
+     #####  #    # #    # #    # #    # #    # #    # 
+                                                      
+
+*******************************************************************)
+
+
+type ctype = 
+	| IntType
+	| BoolType
+	| RefType of ctype
+	| UnitType
+	| FunType of ctype * ctype
+	| None
+
+type core = 
+	| Number of int 
+	| Add of core * core
+	| Sub of core * core 
+	| Mul of core * core 
+	| Div of core * core 
+	| Id of string * ctype
+	| Decl of string * core * core * ctype
+	| Var of core * ctype
+	| Deref of core * ctype
+	| Assign of core * core * ctype
+	| Free of core
+	| If of core * core * core * ctype
+	| While of core  * core
+	| Seq of  core * core
+	| Skip
+	| Eq of core * core
+	| Not of core
+	| Fun of string * ctype * core * ctype (* o último ctype é para indicar o tipo da função *)
+	| Call of core * core * ctype (* o último ctype é para indicar o tipo de retorno *) 
+
+
+type value = 
+	| Num of int
+	| Ref of int
+	| Bool of bool
+	| Closure of string * core * (string * value) list
+	| Unit 
+
+
+(*******************************************************************
+
+      #####   #######  #     #  #######  ####### 
+     #     #     #     #     #  #        #       
+     #           #     #     #  #        #       
+      #####      #     #     #  #####    #####   
+           #     #     #     #  #        #       
+     #     #     #     #     #  #        #       
+      #####      #      #####   #        #       
+                                                 
+
+*******************************************************************)
+
+exception SyntaxError of string * string
+
+
+(** Operações de cast **)
+
+let toNum e = 
+	match e with
+	| Num(n) -> n 
+	| _ -> raise (Failure("Not a number"))
+
+let toRef e =
+	match e with
+	| Ref(n) -> n
+	| _ -> raise (Failure("Not a reference"))
+
+
+
+(** funções de manipulação do ambiente **)
+
+let rec find e env = 
+	match env with
+		| (x,v)::t -> if x=e then v else find e t
+		| _ -> raise (Failure ("Not found: "^e)) 
+
+
+let assoc x v env = (x,v)::env
+
+let assocLast env x l = env@[(x,l)]
+
+(** funções de manipulação da memória **)
+
+let memory : (int,value) Hashtbl.t  = Hashtbl.create 100;;
+
+let newloc v =  (* e as posições vazias ?*)
+	let l = Hashtbl.length memory in 
+	Hashtbl.add memory l v; Ref(l)
+
+
+let rec getloc l = 
+	try Hashtbl.find memory l 
+	with _ -> raise (Failure("Ref("^(string_of_int l)^") not exists."))
+
+let rec setloc l v = 
+	Hashtbl.remove memory l ; (* O remove elimina o antigo valor para manter o length consistente *)
+	Hashtbl.add memory l v
+		
+let free l = Hashtbl.remove memory l;;
+
+(** funções de conversão de valores para string **)
+
+let rec string_of_type t =
+	match t with
+	| IntType -> "int"
+	| BoolType -> "bool"
+	| RefType(ctype) -> "ref("^(string_of_type ctype)^")" 
+	| UnitType -> "unit"
+	| FunType (ctype1,ctype2) -> "fun("^(string_of_type ctype1)^","^(string_of_type ctype2)^ ")"
+	| None -> "none"
+ 
+let string_of_result e = 
+	match e with
+	| Num(n) -> string_of_int n
+	| Ref(n) -> "Ref("^(string_of_int n)^")"
+	| Bool(b) -> string_of_bool b
+	| Closure(s,c,e) -> "Closure("^s^",_,_)"
+	| Unit -> "Unit"
+
+let rec print_list l =
+	match l with
+	| a::t -> a^"\n"^(print_list t)
+	| [] -> ""
+
+let rec print_list_type l =
+	match l with
+	| (a,_)::t -> a^" "^(print_list_type t)
+	| [] -> "" 
+
+
+(*******************************************************************
+
+     #     #                                                 
+     #     #  #    #  #####     ##    #####    ####   ###### 
+     #     #  ##   #  #    #   #  #   #    #  #       #      
+     #     #  # #  #  #    #  #    #  #    #   ####   #####  
+     #     #  #  # #  #####   ######  #####        #  #      
+     #     #  #   ##  #       #    #  #   #   #    #  #      
+      #####   #    #  #       #    #  #    #   ####   ###### 
+                                                             
+
+*******************************************************************)
+
+
+(**funções semânticas **)
+
+let rec unparse a ident =
+	let ni = ident^"  " in
+	match a with
+		| Number n -> ident^(string_of_int n)
+		| Add (l,r) -> ident ^ "Add\n"^(unparse l ni)^"\n"^(unparse r ni)
+		| Sub (l,r) -> ident ^ "Sub\n"^(unparse l ni)^"\n"^(unparse r ni)
+		| Mul (l,r) -> ident ^ "Mul\n"^(unparse l ni)^"\n"^(unparse r ni)
+		| Div (l,r) -> ident ^ "Div\n"^(unparse l ni)^"\n"^(unparse r ni)
+		| Id (x,t) -> ident ^"Id("^ x^"):"^(string_of_type t)
+		| Decl (x,e1,e2,t) -> ident ^ x^" = "^(unparse e1 ni)^" in \n( "^(unparse e2 ni)^"\n }"
+		| Var (x,t) -> ident ^ "Var("^(unparse x ni)^":"^string_of_type t^")"
+		| Deref (x,t) -> ident ^ " !("^(unparse x ni)^":"^string_of_type t^")"
+		| Assign (x,v,t) -> ident ^ (unparse x ni)^":=("^(unparse v ni)^")"
+		| Free (x) -> ident ^ "Free("^(unparse x ni)^")"
+		| If (c,i,e,t) -> ident ^ "If("^(unparse c ni)^","^(unparse i ni)^","^(unparse e ni)^"):"^(string_of_type t)
+		| While (c,e) -> ident ^ "While("^(unparse c ni)^","^(unparse e ni)^")"
+		| Seq (e1,e2) -> ident ^ "Seq("^(unparse e1 ni)^","^(unparse e2 ni)^")"
+		| Skip -> ident ^ "Skip"
+		| Eq (e1,e2) -> ident ^ "( "^(unparse e1 ni)^" == "^(unparse e2 ni)^" )"
+		| Not (e1) -> ident ^ "Not( "^(unparse e1 ni)^" )"
+		| Fun (s,t1,e1,t2) -> ident ^ "Fun("^s^":"^(string_of_type t1)^","^(unparse e1 ni)^")"
+		| Call (e1,e2,t) -> ident ^ "Call("^(unparse e1 ni)^","^(unparse e2 ni)^")"
+
+
+(*******************************************************************
+
+     #######  ######   #######  ####### 
+     #        #     #  #        #       
+     #        #     #  #        #       
+     #####    ######   #####    #####   
+     #        #   #    #        #       
+     #        #    #   #        #       
+     #        #     #  #######  ####### 
+                                        
+
+*******************************************************************)
+
+ 
+(** Não pode haver duplicados na lista de nomes livres**)
+  
+let uniq lst = 
+  let unique_set = Hashtbl.create (List.length lst) in
+    List.iter (fun (x,t) -> Hashtbl.replace unique_set x t) lst;
+    Hashtbl.fold (fun x t xs -> (x,t) :: xs) unique_set []
+
+let unique a b = let x = a@b in uniq x
+
+let filter x l = List.filter (fun (a,_) -> a <> x) l
+
+let rec free e =
+	match e with
+		| Number n -> []
+		| Add (l,r) -> unique (free l) (free r)
+		| Sub (l,r) -> unique (free l) (free r)
+		| Mul (l,r) -> unique (free l) (free r)
+		| Div (l,r) -> unique (free l) (free r)
+		| Id (x,t) -> [(x,t)]	
+		| Decl (x,e1,e2,t) -> unique (free e1) ( filter x (free e2) )
+		| Var (x,_) -> free x 
+		| Deref (x,_) -> free x
+		| Assign (e1,e2,_) -> unique (free e1) (free e1)
+		| Free (x) -> free x
+		| If (c,i,e,_) -> unique ( unique (free c) (free i) ) (free e)
+		| While (c,e) -> unique (free c) (free e)
+		| Seq (e1,e2) -> unique (free e1) (free e2)
+		| Skip -> []
+		| Eq (e1,e2) -> unique (free e1) (free e2)
+		| Not (e1) -> free e1
+		| Fun (x,_,e1,_) ->  filter x (free e1) 
+		| Call (e1,e2,_) -> unique (free e1) (free e2)
+
+(*******************************************************************
+
+       #    #     # #     #    ####### #     # ######  #######  #####  #     # #######  #####  #    # 
+      # #   #     #  #   #        #     #   #  #     # #       #     # #     # #       #     # #   #  
+     #   #  #     #   # #         #      # #   #     # #       #       #     # #       #       #  #   
+    #     # #     #    #          #       #    ######  #####   #       ####### #####   #       ###    
+    ####### #     #   # #         #       #    #       #       #       #     # #       #       #  #   
+    #     # #     #  #   #        #       #    #       #       #     # #     # #       #     # #   #  
+    #     #  #####  #     #       #       #    #       #######  #####  #     # #######  #####  #    # 
+                                                                                                      
+*******************************************************************)
+
+let rec typeof c =
+	match c with
+		| Number (_) -> IntType
+		| Add (_,_) -> IntType
+		| Sub (_,_) -> IntType
+		| Mul (_,_) -> IntType
+		| Div (_,_) -> IntType
+		| Id (_,t) -> t	
+		| Decl (_,_,_,t) -> t
+		| Var (_,t) -> t
+		| Deref (_,t) -> t
+		| Assign (_,_,t) -> t
+		| Free (x) -> UnitType
+		| If (_,_,_,t) -> t
+		| While (_,_) -> UnitType
+		| Seq (_,e) -> typeof e
+		| Skip -> UnitType
+		| Eq (e1,e2) -> BoolType
+		| Not (e1) -> BoolType
+		| Fun (_,_,_,t) -> t
+		| Call (_,_,t) -> t
+
+(*******************************************************************
+
+     #######                                                                
+        #     #   #  #####   ######   ####   #    #  ######   ####   #    # 
+        #      # #   #    #  #       #    #  #    #  #       #    #  #   #  
+        #       #    #    #  #####   #       ######  #####   #       ####   
+        #       #    #####   #       #       #    #  #       #       #  #   
+        #       #    #       #       #    #  #    #  #       #    #  #   #  
+        #       #    #       ######   ####   #    #  ######   ####   #    # 
+                                                                            
+
+*******************************************************************)
+
+
+let rec typecheck e env = 
+	match e with
+
+		| Number n -> Number(n)
+
+		| Add (l,r) -> 
+			let t1 = typecheck l env in
+			let t2 = typecheck r env in
+			if (typeof t1) = (typeof t2) && (typeof t1)=IntType
+				then Add(t1,t2)
+				else raise (Failure("Wrong type in addition"))
+
+		| Sub (l,r) -> 
+			let t1 = typecheck l env in
+			let t2 = typecheck r env in
+			if (typeof t1)=(typeof t2) && (typeof t1)=IntType
+				then Sub(t1,t2)
+				else raise (Failure("Wrong type in subtraction"))
+
+		| Mul (l,r) -> 
+			let t1 = typecheck l env in
+			let t2 = typecheck r env in
+			if (typeof t1)=(typeof t2) && (typeof t1)=IntType
+				then Mul(t1,t2)
+				else raise (Failure("Wrong type in multiplication"))
+
+		| Div (l,r) -> 
+			let t1 = typecheck l env in
+			let t2 = typecheck r env in
+			if (typeof t1)=(typeof t2) && (typeof t1)=IntType
+				then Div(t1,t2)
+				else raise (Failure("Wrong type in division"))
+
+		| Id (x,_) -> 
+			let t = find x env in Id(x,t)
+
+		| Decl (x,e1,e2,_) -> 
+			let t1 = typecheck e1 env in
+			let nenv = assoc x (typeof t1) env in
+			let t2 = typecheck e2 nenv in
+			let t = typeof t2 in
+			Decl(x,t1,t2,t)
+
+		| Var (x,_) ->
+			let t1 = typecheck x env in
+			let t = RefType( typeof t1 ) in
+			Var(t1,t) 
+
+		| Deref (x,_) -> 
+			let t1 = typecheck x env in 
+			let t = typeof t1 in (
+			match t with
+			| RefType(t2) -> Deref(t1,t2)
+			| _ -> raise (Failure("Dereferencing a non-reference value.")) )
+
+		| Assign (e1,e2,_) -> 
+			let t1 = typecheck e1 env in
+			let t2 = typecheck e2 env in ( 
+		  match (typeof t1) with 
+			| RefType(t3) -> 
+				if t3=(typeof t2)
+					then Assign(t1,t2,t3) 
+					else raise (Failure("Type mismatch on assignment.")) 
+			| _ -> raise (Failure("Assigning a non-reference value.")) )
+
+		| Free (x) -> 
+			let t1 = typecheck x env in 
+			let t = typeof t1 in (
+			match t with 
+			| RefType(_) -> Free(t1)
+			| _ -> raise (Failure("Attempting to free a non-reference value.")) )
+
+		| If (c,i,e,_) -> 
+			let t1 = typecheck c env in
+			if (typeof t1)<>BoolType 
+				then raise (Failure ("Not a Bool value in if condition."))
+				else
+					let t2 = typecheck i env in
+					let t3 = typecheck e env in 
+					if (typeof t2)=(typeof t3) 
+						then If(t1,t2,t3,typeof(t2))
+						else raise (Failure ( "Type mismatch on conditional branches."))
+
+		| While (c,e) -> 
+			let t1 = typecheck c env in
+			if ( (typeof t1)<>BoolType )
+				then raise (Failure ("Not a Bool value in if condition."))
+				else
+					let t2 = typecheck e env in
+					While(t1,t2)
+
+		| Seq (e1,e2) -> 
+			let t1 = typecheck e1 env in
+			let t2 = typecheck e2 env in
+			Seq(e1,e2)
+
+		| Skip -> Skip
+
+		| Eq (e1,e2) -> 
+			let t1 = typecheck e1 env in
+			let t2 = typecheck e2 env in
+			if ( (typeof t1)=(typeof t2) )
+				then Eq(t1,t2)
+				else raise (Failure ("Comparison between values of non-equal types."))
+
+		| Not (e1) -> 
+			let t1 = typecheck e1 env in
+			Not(t1)
+
+		| Fun (s,t,e1,_) -> 
+			let nenv = assoc s t env in
+			let t1 = typecheck e1 nenv in
+			Fun(s,t,t1,FunType(t,typeof t1))
+
+		| Call (e1,e2,_) -> 
+			let t1 = typecheck e1 env in
+			let t2 = typecheck e2 env in
+			match (typeof t1) with
+			| FunType(t',t'') -> 
+				if( t'=(typeof t2) )
+					then Call(t1,t2,t'')
+					else raise (Failure ("Type mismatch on call"))
+			| _ -> raise (Failure ("Not a function type value."))
+
+
+			
+(*******************************************************************
+
+         #######  #     #     #     #       
+         #        #     #    # #    #       
+         #        #     #   #   #   #       
+         #####    #     #  #     #  #       
+         #         #   #   #######  #       
+         #          # #    #     #  #       
+         #######     #     #     #  ####### 
+                                            
+*******************************************************************)
+
+(* Avaliação da esquerda para a direita *)
+
+(** usando ambientes **)
+let rec eval(expr,env): value = 
+	match expr with
+		| Number n -> Num(n)
+		| Add (l,r) -> Num(toNum(eval(l,env))+toNum(eval(r,env)))
+		| Sub (l,r) -> Num(toNum(eval(l,env))-toNum(eval(r,env)))
+		| Mul (l,r) -> Num(toNum(eval(l,env))*toNum(eval(r,env)))
+		| Div (l,r) -> 
+			let v1 = eval l env in 
+			let v2 = eval r env in
+			if v2=0 
+				then raise (Failure ("Division by zero."))
+				else v1/v2 
+			
+		| Id (x,_) -> 
+			find x env
+
+		| Decl (x,e1,e2,_) ->
+			let v = eval e1 env in
+				let nenv = (x,v)::env in
+					eval e2 nenv
+
+		| Var (x,t) -> 
+			let v = eval t env in
+			newloc(v)
+			
+		| Deref (x,t) -> 
+			let loc = toRef(eval t env) in
+			getloc(loc)
+
+		| Assign (x,e,t) -> 
+			let loc = toRef(eval x env) in
+			let v = eval e env in
+			setloc loc v
+
+		| Free (x) -> 
+			let loc = toRef(eval t env) in
+			freeloc(loc)
+
+		| If (c,i,e,_) -> 
+			let v = eval c env in
+			match v with
+			| Bool(true) -> eval i env
+			| Bool(false) -> eval e env
+
+		| While (c,e) -> 
+			let vc = eval c env in
+			match vc with
+			| Bool(true) -> eval (Seq(e,While(c,e))) env
+			| Bool(false) -> Unit
+		
+		| Seq (e1,e2) -> 
+			eval e1 env ; eval e2 env
+		
+		| Skip -> 
+			Unit
+		
+		| Eq (e1,e2) -> 
+			let t1 = eval e1 env in
+			let t2 = eval e2 env in
+			Bool(t1=t2)
+
+		| Not (e1) -> 
+			Bool( not(eval e1 env))
+
+		| Fun (s,t1,e1,t2) -> 
+			Closure(s,e1 env)
+		
+		| Call (e1,e2,t) -> 
+			let f = eval e1 env in
+			let a = eval e2 env in
+			match f with
+			| Closure(x,e,env2) -> eval e (assoc x a env2)
+			| _ -> raise (Failure ("Not a function."))
+
+
+
+
+(***********************************************************************
+
+       #    #     # #     #     #####  ####### #     # ######  
+      # #   #     #  #   #     #     # #     # ##   ## #     # 
+     #   #  #     #   # #      #       #     # # # # # #     # 
+    #     # #     #    #       #       #     # #  #  # ######  
+    ####### #     #   # #      #       #     # #     # #       
+    #     # #     #  #   #     #     # #     # #     # #       
+    #     #  #####  #     #     #####  ####### #     # #       
+                                                               
+
+***********************************************************************)
+
+type dest = 
+	Reg of int 
+  | I32 of int
+
+type label = 
+	LabelT of int 
+  | LabelS of string
+
+type op = 
+    Add_i32 of dest * dest * dest
+  | Sub_i32 of dest * dest * dest
+  | Mul_i32 of dest * dest * dest
+  | Div_i32 of dest * dest * dest
+  | New_var of ctype * dest * dest
+  | Set_var of ctype * dest * dest
+  | Get_var of ctype * dest * dest
+  | Free_var of dest
+  | Phi of ctype * dest * dest * label * dest * label
+  | Eq_i32 of dest * dest * dest
+  | Not_i1 of dest * dest
+
+type block = 
+	| IBlock of label * op list * label (* Bloco incondicional. Têm a label de início, o código (op list) e a label de destino no fim do processo*)
+	| CBlock of label * op list * (dest * label * label) (* bloco condicional - Tem uma label de inicio, o código, uma condição e duas labels *)
+
+let dest2Str e = 
+	match e with
+	| I32 n -> (string_of_int n)
+	| Reg n -> "%"^(string_of_int n)
+
+let label2Str l =
+	match l with
+	| LabelT n -> "bb"^(string_of_int n)
+	| LabelS s -> s
+ 
+let op2Str e = 
+	match e with
+ | Add_i32 (d1,d2,d3) -> "  "^(dest2Str d1)^" = add i32 "^(dest2Str d2)^", "^(dest2Str d3)
+ | Sub_i32 (d1,d2,d3) -> "  "^(dest2Str d1)^" = sub i32 "^(dest2Str d2)^", "^(dest2Str d3)
+ | Mul_i32 (d1,d2,d3) -> "  "^(dest2Str d1)^" = mul i32 "^(dest2Str d2)^", "^(dest2Str d3)
+ | Div_i32 (d1,d2,d3) -> "  "^(dest2Str d1)^" = sdiv i32 "^(dest2Str d2)^", "^(dest2Str d3)
+ | New_var (IntType,d',d'')    -> "  "^(dest2Str d')^" = call %struct.var_type* @int_var_create(i32 "^(dest2Str d'')^") nounwind ssp "
+ | New_var ((RefType _),d',d'') -> ""^(dest2Str d')^" = call %struct.var_type* @var_var_create(%struct.var_type* "^(dest2Str d'')^") nounwind ssp "
+ | New_var ((BoolType),d',d'') -> "New bool"
+ | New_var ((UnitType),d',d'') -> "New unit" 
+ | New_var ((FunType(_,_)),d',d'') -> "New Fun "
+ | New_var ((None),d',d'') -> "New none"
+ | Set_var (IntType,d',d'')    -> " "^"call void @int_set_var(%struct.var_type* "^(dest2Str d')^", i32 "^(dest2Str d'')^") nounwind ssp"
+ | Set_var ((RefType _),d',d'') -> " "^"call void @var_set_var(%struct.var_type* "^(dest2Str d')^", %struct.var_type* "^(dest2Str d'')^") nounwind ssp"
+ | Set_var ((BoolType),d',d'') -> "Set bool"
+ | Set_var ((UnitType),d',d'') -> "Set unit"
+ | Set_var ((FunType(_,_)),d',d'') -> "set Fun "
+ | Set_var ((None),d',d'') -> "Set none"
+ | Get_var (IntType,d',d'')    -> " "^(dest2Str d')^" = call i32 @int_get_var(%struct.var_type* "^(dest2Str d'')^") nounwind ssp "
+ | Get_var ((RefType _),d',d'') -> " "^(dest2Str d')^" = call %struct.var_type* @int_get_var(%struct.var_type* "^(dest2Str d'')^") nounwind ssp "
+ | Get_var ((BoolType),d',d'') -> "Get bool"
+ | Get_var ((UnitType),d',d'') -> "Get unit"
+ | Get_var ((FunType(_,_)),d',d'') -> "get Fun "
+ | Get_var ((None),d',d'') -> "Get none"
+ | Free_var (d) -> "  call void @free_var(%struct.var_type* "^(dest2Str d)^") nounwind ssp "
+ | Phi (IntType,d,d',l',d'',l'') -> "  "^(dest2Str d)^" = phi i32 ["^(dest2Str d')^", %"^(label2Str l')^"], ["^(dest2Str d'')^", %"^label2Str l''^"]"
+ | Phi (RefType _,d,d',l',d'',l'') -> "Phi bool"
+ | Phi (BoolType,d,d',l',d'',l'') -> "Phi bool"
+ | Phi (UnitType,d,d',l',d'',l'') -> "Phi unit"
+ | Phi ((FunType(_,_)),d,d',l',d'',l'') -> " Phi Fun "
+ | Phi (None,d,d',l',d'',l'') -> "Phi none"
+ | Not_i1 (d,d') -> "  "^(dest2Str d)^" = xor i1 1, "^(dest2Str d')
+ | Eq_i32 (d,d',d'') -> "  "^(dest2Str d)^" = icmp eq i32 "^(dest2Str d')^", "^(dest2Str d'')
+
+let main_header = 
+       "@.str = private constant [4 x i8] c\"%d\\0A\\00\", align 1 ; "^
+       "<[4 x i8]*> [#uses=1]\n"^
+       "\n"^
+       "%struct.var_type = type { i32, %union.anon }\n"^
+       "%union.anon = type { %struct.var_type* }\n"^
+       "\n"^
+       "define i32 @main() nounwind {\n"
+
+let main_footer dest lend = 
+       (label2Str) lend ^ ":\n"^
+       "  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([4 x i8]* "^
+       "@.str, i64 0, i64 0), i32 "^ (dest2Str dest) ^
+       ") nounwind ; <i32> [#uses=0]\n"^
+       "  ret i32 0\n"^
+       "}\n"^
+       "\n"^
+       "declare i32 @printf(i8*, ...) nounwind\n"^
+       "declare %struct.var_type* @int_var_create(i32)\n"^
+       "declare %struct.var_type* @var_var_create(%struct.var_type*)\n"^
+       "declare i32 @int_get_var(%struct.var_type*)\n"^
+       "declare %struct.var_type* @var_get_var(%struct.var_type*)\n"^
+       "declare void @int_set_var(%struct.var_type*, i32)\n"^
+       "declare void @var_set_var(%struct.var_type*, %struct.var_type*)\n"^
+       "declare void @free_var(%struct.var_type*, %struct.var_type*)\n"
+
+let block2Str b = 
+	match b with
+	| IBlock (l,ops,l') -> 
+          (label2Str l) ^ ":\n" ^ let x =  List.map (function o -> op2Str o) ops in
+          print_list x ^
+          "  br label %"^ (label2Str l')
+	| CBlock (l,ops,(d,l',l'')) -> 
+          (label2Str l) ^ ":\n" ^ 
+          let x =  List.map (function o -> op2Str o) ops in
+          print_list x ^
+          "  br i1 "^ (dest2Str d) ^", label %"^ (label2Str l')^", label %"^ (label2Str l'')
+
+let dump (bs,d,lend) = (main_header) ^ let x = List.map (function b->((block2Str b)^"\n")) bs in print_list x ^ (main_footer d lend)
+
+let labelref = ref(-1);;
+let newlabel () = incr labelref ; LabelT(!labelref);;
+
+let refref = ref(-1);;
+let newreg () = incr refref; Reg(!refref);;
+
+(*******************************************************************
+
+      #####                                                     
+     #     #   ####   #    #  #####   #  #       ######  #####  
+     #        #    #  ##  ##  #    #  #  #       #       #    # 
+     #        #    #  # ## #  #    #  #  #       #####   #    # 
+     #        #    #  #    #  #####   #  #       #       #####  
+     #     #  #    #  #    #  #       #  #       #       #   #  
+      #####    ####   #    #  #       #  ######  ######  #    # 
+                                                                                                                           
+
+*******************************************************************)
+
+
+let rec comp program env (start,lend) = 
+	match program with
+
+		| Number n -> 
+			([],I32 n,start)
+		
+		| Add (l,r) ->
+			let m1 = newlabel () in
+			let m2 = newlabel () in
+			let (code1,d1,m1) = comp l env (start,m1) in
+			let (code2,d2,m2) = comp r env (m1,m2) in
+			let reg = newreg () in 
+				(List.concat [ code1; code2; [ IBlock (m2, [Add_i32(reg,d1,d2)],lend)]], reg, lend)
+		
+		| Sub (l,r) ->	
+		let m1 = newlabel () in
+			let m2 = newlabel () in
+			let (code1,d1,m1) = comp l env (start,m1) in
+			let (code2,d2,m2) = comp r env (m1,m2) in
+			let reg = newreg () in 
+				(List.concat [ code1; code2; [ IBlock (m2, [Sub_i32(reg,d1,d2)], lend) ] ], reg, lend)
+
+		| Mul (l,r) -> 
+			let m1 = newlabel () in
+			let m2 = newlabel () in
+			let (code1,d1,m1) = comp l env (start,m1) in
+			let (code2,d2,m2) = comp r env (m1,m2) in
+			let reg = newreg () in 
+				(List.concat [ code1; code2; [ IBlock (m2, [Mul_i32(reg,d1,d2)], lend) ] ], reg, lend)
+		
+		| Div (l,r) -> 
+			let m1 = newlabel () in
+			let m2 = newlabel () in
+			let (code1,d1,m1) = comp l env (start,m1) in
+			let (code2,d2,m2) = comp r env (m1,m2) in
+			let reg = newreg () in 
+				(List.concat [ code1; code2; [ IBlock (m2, [Div_i32(reg,d1,d2)], lend) ] ], reg, lend)
+		
+		| Id (x,t) ->
+			let v = find x env in
+			([],v,start)
+		
+		| Decl (x,e1,e2,t) -> 
+			let m1 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start, m1) in
+			let (code2,d2,lend) = comp e2 ((x,d1)::env) (m1,lend) in
+			(List.concat [code1;code2],d2,lend)
+		
+		| Var (e1,t) -> 
+			let m1 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start,m1) in
+			let d2 = newreg() in
+			(List.concat [code1; [IBlock(m1,[New_var(t,d2,d1)],lend)] ] ,d2,lend)
+		
+		| Deref (e1,t) -> 
+			let m1 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start,m1) in
+			let d2 = newreg() in
+			(List.concat [code1; [IBlock( m1 , [Get_var(t,d2,d1)] , lend )] ] , d2 , lend)
+		
+		| Assign (e1,e2,t) ->
+			let m1 = newlabel() in
+			let m2 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start,m1) in
+			let (code2,d2,m2) = comp e2 env (m1,m2) in
+			( List.concat [ code1; code2; [ IBlock( m2, [Set_var(t,d1,d2)] , lend ) ] ] , d2 , lend )
+		
+		| Free (e1) ->
+			let m1 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start,m1) in
+			( List.concat [code1; [ IBlock( m1 , [Free_var d1] , lend ) ] ] , d1, lend)
+		
+		| If (e_c,e_t,e_e,t) -> 
+			let l_cond = newlabel() in
+	     	let l_then = newlabel() in
+		    let l_else = newlabel() in
+		    let l_then_exit = newlabel() in
+		    let l_else_exit = newlabel() in
+		    let l_exit = newlabel() in
+		    let d4 = newreg() in
+		    let (code1,d1, l_cond) = comp e_c env (start,l_cond) in
+		    let (code2,d2,l_then_exit) = comp e_t env (l_then,l_then_exit) in
+		    let (code3,d3,l_else_exit) = comp e_e env (l_else,l_else_exit) in
+		    let all_bs = List.concat [ code1 ; code2 ; code3 ;
+		           [CBlock(l_cond,[],(d1,l_then,l_else))] ;
+		           [IBlock(l_then_exit,[],l_exit)];
+		           [IBlock(l_else_exit,[],l_exit)]; 
+		           [IBlock(l_exit,[Phi(t,d4,d2,l_then_exit,d3,l_else_exit)],lend)]] in 
+		        (all_bs, d4, lend)
+		
+		| While (c,e) -> 
+			let l_cond = newlabel() in
+			let l_body = newlabel() in
+			let l_exit = newlabel() in 
+			let (code1, d1,l_cond) = comp c env (start,l_cond) in
+			let (code2, d2,l_exit) = comp e env (l_body,l_exit) in
+			( List.concat [ code1 ; code2 ; [ CBlock( l_cond, [] , ( d1 ,l_body ,lend ) ) ; IBlock( l_exit, [], start ) ] ] , d2, lend)
+		
+		| Seq (e1,e2) -> 
+			let m1 = newlabel() in
+			let (code1,d1,m1) = comp e1 env (start,m1) in
+			let (code2,d2,lend) = comp e2 env (m1,lend) in
+			(List.concat [code1;code2] , d2, lend)
+
+		| Skip -> ([],I32 0,start)
+		
+		| Eq (e,e') -> 
+			let m1 = newlabel() in
+			let m2 = newlabel() in
+			let (code1,d,m1) = comp e env (start,m1) in
+			let (code2,d',m2) = comp e' env (m1,m2)  in
+			let d'' = newreg() in
+				( List.concat [ code1; code2;  [IBlock( m2, [ Eq_i32( d'' , d , d' ) ], lend) ] ], d'',lend)
+
+		| Not (e) ->
+			let m = newlabel() in
+			let (code,d,m) = comp e env (start,m) in
+			let d' = newreg() in
+				( List.concat [code; [ IBlock( m, [ Not_i1( d' , d ) ], lend) ] ], d',lend)
+
+		| Fun (s,t1,e1,t2) -> ([],I32 0,start)
+		
+		| Call (e1,e2,t) -> ([],I32 0,start)
+
+
+(*******************************************************************
+
+         #######  #     #  #######   #####  
+         #         #   #   #        #     # 
+         #          # #    #        #       
+         #####       #     #####    #       
+         #          # #    #        #       
+         #         #   #   #        #     # 
+         #######  #     #  #######   #####  
+                                            
+                            
+*******************************************************************)
+
+(** funções para imprimir o resultado das semânticas **)
+
+let unparse_cmd e = unparse e ""
+
+let free_cmd e = "free: "^print_list_type (free e)
+
+let typecheck_cmd e = "typecheck: "^ try (typecheck e []); "Ok" with Failure(msg) -> "Error "^msg
+
+let eval_cmd e = "eval: "^(string_of_result (eval e []))
+
+let comp_cmd e = 
+	let result = comp e [] (LabelS "entry", LabelS "result") in 
+		match result with
+		| (bs,d,lend) -> dump(bs,d,lend)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

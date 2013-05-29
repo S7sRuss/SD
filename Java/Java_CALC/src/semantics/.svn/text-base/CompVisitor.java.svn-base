@@ -1,0 +1,31 @@
+package semantics;
+
+import compiler.CodeSeq;
+
+import ast.ASTAdd;
+import ast.ASTMul;
+import ast.ASTNum;
+import ast.Visitor;
+
+
+public class CompVisitor implements Visitor<Void, CodeSeq> {
+
+	@Override
+	public Void visit(ASTNum number, CodeSeq code) {
+		code.gen_ldc_i4(number.num);
+		return null;
+	}
+
+	@Override
+	public Void visit(ASTAdd plus, CodeSeq code) {
+		plus.left.accept(this,code);
+		plus.right.accept(this,code);
+		code.gen_add();
+		return null;
+	}
+
+	@Override
+	public Void visit(ASTMul mult, CodeSeq code) {
+		return null;
+	}
+}

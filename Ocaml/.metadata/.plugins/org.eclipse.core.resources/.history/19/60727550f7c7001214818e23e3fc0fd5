@@ -1,0 +1,48 @@
+{
+open Parser
+
+exception UnknownToken of char
+}
+
+let digit = ['0'-'9']
+let char = ['a'-'z' 'A'-'Z']
+let whitespace = (' '| '\t' | '\r' | '\n' | ("//" [^'\n' '\r']*) | ("/*"[^'/']*"*/"))*
+rule token = parse
+	| whitespace { token lexbuf }
+	| ";;"  	{ EOL }
+	| ';'  		{ SEQ }
+	| "skip"  	{ SKIP }
+	| "if"  	{ IF }
+	| "then"  	{ THEN }
+	| "else"  	{ ELSE }
+	| "while"  	{ WHILE }
+	| "do"  	{ DO }
+	|  "->" 	{ ARROW }
+	| '{'  		{ CLPAR }
+	| '}'  		{ CRPAR }
+	| "free"  	{ FREE }
+	| "=="  	{ EQUAL }
+	| '='  		{ ASSIGN }
+	| '+'  		{ PLUS }
+	| '-'  		{ MINUS }
+	| '*'  		{ MULT }
+	| '/'  		{ DIV }
+	| '('  		{ LPAR }
+	| ')'  		{ RPAR }
+	| "not"  	{ NOT }
+	| '!'  		{ DEREF }
+	| "decl" 	{ DECL }
+	| "in"  	{ IN }
+	| "fun"  	{ FUN }
+	| "var"		{ VAR }
+	| ':'  		{ TYPEOF }
+	|  "bool" 	{ BOOLTYPE }
+	|  "int" 	{ INTTYPE }
+	|  "none" 	{ NONETYPE }
+	|  "ref" 	{ REFTYPE }
+	|  "fun"  { FUNTYPE }
+	|  "" { UNITTYPE }
+	| digit+ as num { INT (int_of_string num) }
+	| char (char | digit)* as word { NAME word }
+	| _ as tk { raise (Failure(Char.escaped tk)) }
+	| eof { raise End_of_file }

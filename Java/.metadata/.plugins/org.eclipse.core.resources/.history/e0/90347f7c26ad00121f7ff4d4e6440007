@@ -1,0 +1,44 @@
+package compiler;
+
+import ast.ASTAdd;
+import ast.ASTDiv;
+import ast.ASTMul;
+import ast.ASTNum;
+import ast.ASTSub;
+import ast.Visitor;
+
+public class CompVisitor implements Visitor<String>{
+
+	@Override
+	public String visit(ASTNum number) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String visit(ASTAdd plus) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String visit(ASTSub minus) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String visit(ASTMul mult) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String visit(ASTDiv div) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	
+
+}

@@ -1,0 +1,21 @@
+/**
+ * JavaCC template file created by SF JavaCC plugin 1.5.17+ wizard for JavaCC 1.5.0+
+ */options{  JDK_VERSION = "1.5";  static = false;}PARSER_BEGIN(Parser)
+package parser;
+
+import ast.ASTNode;
+import ast.ASTAdd;
+import ast.ASTMul;
+import ast.ASTNum;
+
+public class Parser{
+  }PARSER_END(Parser)SKIP :{  " "| "\r"| "\t"}TOKEN : /* OPERATORS */{  < PLUS : "+" >| < MULTIPLY : "*" >| < LPAR : "(" >
+| < RPAR : ")" >
+| < EOL: "\n" >}TOKEN :{  < INT : (< DIGIT >)+ >
+| < #DIGIT : [ "0"-"9" ] >
+}ASTNode main() :{ ASTNode e; }{  e = expr() < EOL > { return e; }}
+ASTNode expr() :{ ASTNode l, r; }{  l = term() [ < PLUS > r = expr() { l = new ASTAdd(l,r); } ]
+    { return l; }}ASTNode term() :{ ASTNode l, r; }{  l = factor() [ < MULTIPLY > r = term() { l = new ASTMul(l,r); } ]
+    { return l; }}ASTNode factor() :{ Token t; ASTNode e; }{  t = < INT > { return new ASTNum(Integer.parseInt(t.image)); }
+| < LPAR > e = expr() < RPAR > { return e; }
+}

@@ -1,0 +1,5 @@
+package ast;
+
+public interface ASTNode {
+	<T,C> T accept(Visitor<T,C> visitor, C o);
+}

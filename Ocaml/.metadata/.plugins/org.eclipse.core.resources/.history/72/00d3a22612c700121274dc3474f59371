@@ -1,0 +1,5 @@
+
+let mem : (int,string) Hashtbl.t  = Hashtbl.create 10;;
+
+let add m k v = Hashtbl.remove m k; Hashtbl.add m k v;;
+ 

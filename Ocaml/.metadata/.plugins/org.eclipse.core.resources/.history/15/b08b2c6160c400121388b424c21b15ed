@@ -1,0 +1,105 @@
+%{
+open Syntax
+
+let parse_error s = 
+  print_endline s;
+  flush stdout
+	
+let string_of_position p =
+	(string_of_int p.Lexing.pos_lnum) ^":" ^ (string_of_int p.Lexing.pos_cnum)
+
+let raiseError () = 
+	let p1 = (Parsing.rhs_start_pos 1) in 
+  let p2 = (Parsing.symbol_end_pos()) in
+	Parsing.clear_parser ();
+  raise (SyntaxError(string_of_position p1, string_of_position p2))
+
+%}
+
+
+%token EOL
+%token <int> INT
+%token <string> STRING
+%token <string> NAME
+%token DECL IN
+%token FUN CALL
+%token IF THEN ELSE WHILE SKIP
+%token SEQ
+%token DEREF VAR FREE ASSIGN
+%token EQUAL NOT 
+%token PLUS MINUS MULT DIV 
+%token LPAR RPAR TYPEOF CLPAR CRPAR
+ 
+
+%start main
+
+%type <Syntax.calcst> main
+
+%% /* Grammar rules */
+
+main: 
+  statements EOL { $1 }
+;
+ 
+
+statements:
+    statements flowcontrol { Seq($1,$2) } 
+  | statements ';' expression { Seq($1,$3) }
+  | expression { $1 }
+;
+
+flowcontrol:
+   SKIP { Skip }
+  | IF LPAR expression RPAR TYPEOF ctype block ELSE block { If ($3,$7,$9,$6) }
+  | WHILE LPAR expression RPAR block { While ($3,$5) }
+;
+
+block:
+  CLPAR statements CRPAR { $2 }
+;
+
+expression:
+    NAME TYPEOF ctype { Id($1,$3) } 
+  | FREE expression { Free ($2) }
+	| ctype factor ASSIGN expression { Assign ($2,$4,$1) }
+  | eq { $1 }
+  ;
+
+eq:
+    sum EQUAL sum { Eq ($1,$3) }
+  | sum { $1 }
+;
+
+sum:
+    sum PLUS term { Add ($1,$3) }
+  | sum MINUS term { Sub ($1,$3) }
+  | term { $1 }
+;
+
+term:
+    term MULT op { Mul ($1,$3) }
+  | term DIV op { Div ($1,$3) }
+  | op { $1 }
+;
+
+op:
+     factor LPAR expression RPAR { Call ($1,$3) }
+   | NOT factor   { Not ($2) }
+   | ctype DEREF factor { Deref ($3,$1) }
+   | factor { $1 }
+  ;
+
+factor:
+    ctype NAME ASSIGN expression IN block { Decl ($2,$4,$6,$1) }
+  | ctype FUN STRING block { Fun ($3,$1,$4) }
+  | INT { Number($1) }
+  | LPAR expression RPAR { $2 }
+;
+
+ctype: 
+  | "int" { IntType }
+  | "bool" { BoolType }
+	| "unit" { UnitType }
+	| "none" { None }
+	| "ref" ctype { RefType($2) }
+;

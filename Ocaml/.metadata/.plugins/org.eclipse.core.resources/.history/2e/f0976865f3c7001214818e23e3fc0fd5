@@ -1,0 +1,108 @@
+%{
+open Syntax
+
+let parse_error s = 
+  print_endline s;
+  flush stdout
+	
+let string_of_position p =
+	(string_of_int p.Lexing.pos_lnum) ^":" ^ (string_of_int p.Lexing.pos_cnum)
+
+let raiseError () = 
+	let p1 = (Parsing.rhs_start_pos 1) in 
+  let p2 = (Parsing.symbol_end_pos()) in
+	Parsing.clear_parser ();
+  raise (SyntaxError(string_of_position p1, string_of_position p2))
+
+%}
+
+%token EOL
+%token <string> NAME
+%token <int> INT
+%token SEQ
+%token SKIP IF THEN ELSE WHILE DO 
+%token CLPAR CRPAR
+%token FREE ASSIGN
+%token EQUAL
+%token PLUS MINUS
+%token MULT DIV
+%token LPAR RPAR NOT DEREF
+%token DECL IN FUN TYPEOF ARROW INT VAR
+%token BOOLTYPE INTTYPE NONETYPE REFTYPE UNITTYPE FUNTYPE
+
+
+%start main
+
+%type <Syntax.core> main
+
+%% /* Grammar rules */
+
+main: 
+  statements EOL { $1 }
+;
+ 
+
+statements:
+    statements SEQ flowcontrol { Seq($1,$3) } 
+	| flowcontrol {$1}
+;
+
+flowcontrol:
+    expression { $1 }
+  | SKIP { Skip }
+  | IF expression THEN block ELSE block { If ($2,$4,$6,None) }
+  | WHILE expression DO block { While ($2,$4) }
+;
+
+block:
+  CLPAR statements CRPAR { $2 }
+  | flowcontrol {$1}  /* Como é sem { } então só deve receber uma statement. O flowcontrol é quase isso...*/
+;
+
+expression:
+   FREE expression { Free ($2) }
+	| factor ASSIGN expression { Assign ($1,$3,None) }
+  | eq { $1 }
+  ;
+
+eq:
+    sum EQUAL sum { Eq ($1,$3) }
+  | sum { $1 }
+;
+
+sum:
+    sum PLUS term { Add ($1,$3) }
+  | sum MINUS term { Sub ($1,$3) }
+  | term { $1 }
+;
+
+term:
+    term MULT op { Mul ($1,$3) }
+  | term DIV op { Div ($1,$3) }
+  | op { $1 }
+;
+
+op:
+     factor LPAR expression RPAR { Call ($1,$3,None) }
+   | NOT factor   { Not ($2) }
+   | DEREF factor { Deref ($2,None) }
+   | factor { $1 }
+  ;
+
+factor:
+    DECL NAME ASSIGN expression IN block { Decl ($2,$4,$6,None) }
+  | FUN NAME TYPEOF ctype ARROW block { Fun ($2,$4,$6,None) }
+  | INT { Number($1) }
+  | LPAR statements RPAR { $2 }
+  | NAME { Id($1,None) }
+  | VAR statements { Var($2,None) }  
+;
+
+ctype: 
+   INTTYPE { IntType }
+  | BOOLTYPE { BoolType }
+	| UNITTYPE { UnitType }
+	| NONETYPE { None }
+	| REFTYPE ctype { RefType($2) }
+	| FUNTYPE ctype ctype { FunType($2,$3) }
+;

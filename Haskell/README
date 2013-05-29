@@ -1,0 +1,25 @@
+Como usar:
+	Em Desktop/Current Works estão os ficheiros de projecto para o sublime text.
+
+	1. Define-se o Lexer.h, o Parser.h e o Main.h
+	2. Executa-se o makefile
+		2.1 Abre-se a consola
+		2.2 Vai-se até à pasta do código
+		2.3 make (na consola)
+	3. Executa-se o main.exe (que é o programa gerado)
+
+
+
+Caso se perca os ficheiros do projecto para o sublime text:
+
+Conteúdo de filename.sublime-project:
+	{
+	"folders":
+	[
+		{
+			"path": "/C/Users/Filipe/Desktop/Faculdade/ICL/Codigos/Haskell",
+			"file_exclude_patterns": ["*.hi","Lexer.hs","Parser.hs"]
+		}
+	]
+}
+

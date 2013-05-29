@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/icl/!svn/ver/38/praticas/StarterCode-java-visitor/src/ast
+END
+Visitor.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/icl/!svn/ver/41/praticas/StarterCode-java-visitor/src/ast/Visitor.java
+END
+ASTAdd.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/icl/!svn/ver/38/praticas/StarterCode-java-visitor/src/ast/ASTAdd.java
+END
+ASTMul.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/icl/!svn/ver/38/praticas/StarterCode-java-visitor/src/ast/ASTMul.java
+END
+ASTNum.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/icl/!svn/ver/38/praticas/StarterCode-java-visitor/src/ast/ASTNum.java
+END
+ASTNode.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/icl/!svn/ver/41/praticas/StarterCode-java-visitor/src/ast/ASTNode.java
+END
+UnparseVisitor.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/icl/!svn/ver/38/praticas/StarterCode-java-visitor/src/ast/UnparseVisitor.java
+END

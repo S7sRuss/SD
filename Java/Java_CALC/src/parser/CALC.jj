@@ -1,0 +1,25 @@
+/**
+ * JavaCC template file created by SF JavaCC plugin 1.5.17+ wizard for JavaCC 1.5.0+
+ */options{  JDK_VERSION = "1.5";  static = false;}PARSER_BEGIN(Parser)
+package parser;
+
+import ast.*;
+
+
+public class Parser{
+  }PARSER_END(Parser)SKIP :{  " "| "\r"| "\t"}TOKEN : /* OPERATORS */{
+  < EOL: "\n" >| < PLUS : "+" >
+| < MINUS : "-" >| < MULT : "*" >
+| < DIV : "/" >| < LPAR : "(" >
+| < RPAR : ")" >| < INT : (< DIGIT >)+ >
+| < #DIGIT : [ "0"-"9" ] >
+}ASTNode main() :{ ASTNode e; }{  e = expr() < EOL > { return e; }}
+ASTNode expr() :{ ASTNode l, r; }{
+  l = term() ( < PLUS > r = term() { return new ASTAdd(l,r); } |
+ < MINUS > r = term() { return new ASTSub(l,r); })?
+{ return l; }}ASTNode term() :{ ASTNode l, r; }{  l = factor() (< MULT > r = term() { return new ASTMul(l,r); }
+|  < DIV > r = term() { return new ASTDiv(l,r); })? 
+  { return l; }   }ASTNode factor() :{ Token t; ASTNode e; }{
+  < MINUS > t= < INT >  {     return new ASTSub(new ASTNum(0),new ASTNum(Integer.parseInt(t.image)));  }  | t = < INT > { return new ASTNum(Integer.parseInt(t.image)); }
+| < LPAR > e = expr() < RPAR > { return e; }
+}

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;playground/msin.ml&apos; to &apos;main.ml&apos;" description="Rename resource &apos;msin.ml&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="msin.ml" name="main.ml" stamp="1369253919207" updateReferences="true"/>
+</session>

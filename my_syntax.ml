@@ -1,0 +1,30 @@
+
+let STATEMENTS = STATEMENTS STAT | STAT
+
+let STAT = EXPRESSION ';' | DISRUPTE | IF | WHILE
+
+let EXPRESSION = NAME "=" EXPRESSION | | EXPRESSION
+
+let DISRUPTE = "skip"
+
+let IF = "if" '(' EXPRESSION ')' BLOCK "else" BLOCK
+
+let WHILE = "while" '(' EXPRESSION ')' BLOCK 
+
+let BLOCK = '{' STATEMENTS '}'
+
+let EXPRESSION =  NAME | "free" EXPRESSION | EQ
+
+let EQ = SUM "==" SUM | SUM
+
+let SUM = SUM '+' TERM | SUM '-' TERM | TERM
+
+let TERM = TERM '*' OP | TERM '/' OP | OP
+
+let OP =  NAME '(' EXPRESSION ')' | '!' FACTOR | '*' FACTOR | FACTOR
+
+let FACTOR = DECL | FUNCTION | NUMBER | STRING | '(' EXPRESSION ')'
+
+let DECL = "decl " NAME '=' EXPRESSION BLOCK
+
+let FUNCTION = "function" STRING '{' STATEMENTS '}'

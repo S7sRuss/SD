@@ -1,0 +1,4 @@
+"Rule: ocaml: cmo* -> byte (%=main )": "\239\184g\251\014,\005A>w\188\234Q\237U\210"
+"Rule: ocaml: ml -> cmo & cmi (%=main )": "\188\248\152~r|\144\184\255B\244GZ\165\149\137"
+"Rule: ocaml dependencies ml (%=main )": "K,]\214\223H[\txa\2544\029/$\149"
+"Resource: /cygdrive/c/Users/Filipe/Desktop/Faculdade/ICL/Codigos/Ocaml/playground/main.ml": "\129\005\027\204,\241\190\2237\130$\176\169>(w"
